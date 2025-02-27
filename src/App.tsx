@@ -1,26 +1,250 @@
 /* eslint-disable max-len */
 /* eslint-disable jsx-a11y/control-has-associated-label */
-import React from 'react';
-import { UserWarning } from './UserWarning';
+import React, { useEffect, useState } from 'react';
 
-const USER_ID = 0;
+import * as todoService from './api/todos';
+import { UserWarning } from './components/UserWarning';
+import { TodoHeader } from './components/TodoHeader';
+import { TodoList } from './components/TodoList';
+import { TodoFooter } from './components/TodoFooter';
+import { TodoNotification } from './components/TodoNotification';
+import { Todo } from './types/Todo';
 
 export const App: React.FC = () => {
-  if (!USER_ID) {
+  const [todos, setTodos] = useState<Todo[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [filterField, setFilterField] = useState('all');
+  const [errorMessage, setErrorMessage] = useState('');
+  const [tempTodo, setTempTodo] = useState<Todo | null>(null);
+
+  const areAllTodosCompleted = () => {
+    const completedTodos = [...todos].filter(todo => todo.completed);
+
+    return completedTodos.length === todos.length;
+  };
+
+  useEffect(() => {
+    if (errorMessage) {
+      const timer = setTimeout(() => setErrorMessage(''), 3000);
+
+      return () => clearTimeout(timer);
+    }
+  }, [errorMessage]);
+
+  function loadTodos() {
+    setErrorMessage('');
+    setLoading(true);
+
+    todoService
+      .getTodos()
+      .then(setTodos)
+      .catch(() => setErrorMessage('Unable to load todos'))
+      .finally(() => setLoading(false));
+  }
+
+  useEffect(() => {
+    loadTodos();
+  }, []);
+
+  const addTodo = ({ title, completed, userId }: Todo) => {
+    setErrorMessage('');
+    setLoading(true);
+
+    const newTodo = {
+      id: Math.random(),
+      title: title.trim(),
+      userId: todoService.USER_ID,
+      completed: false,
+    };
+
+    setTempTodo(newTodo);
+
+    return todoService
+      .createTodo({ title, completed, userId })
+      .then(newOneTodo => {
+        setTodos(currentTodos => [...currentTodos, newOneTodo]);
+      })
+      .catch(error => {
+        setErrorMessage('Unable to add a todo');
+        throw error;
+      })
+      .finally(() => {
+        setLoading(false);
+
+        setTempTodo(null);
+      });
+  };
+
+  const deleteTodo = async (todoId: number) => {
+    setErrorMessage('');
+    setLoading(true);
+    setTodos(currentTodos =>
+      currentTodos.map(todo =>
+        todo.id === todoId ? { ...todo, isDeleting: true } : todo,
+      ),
+    );
+
+    try {
+      await todoService.deleteTodo(todoId);
+      setTodos(currentTodos => currentTodos.filter(todo => todo.id !== todoId));
+
+      return true;
+    } catch (error) {
+      setErrorMessage('Unable to delete a todo');
+      setTodos(currentTodos =>
+        currentTodos.map(todo =>
+          todo.id === todoId ? { ...todo, isDeleting: false } : todo,
+        ),
+      );
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const toggleCompletedStatus = () => {
+    if (areAllTodosCompleted()) {
+      todos.map(todo => updateTodo({ ...todo, completed: false }));
+    } else {
+      const unCompletedTodos = [...todos].filter(todo => !todo.completed);
+
+      unCompletedTodos.map(todo => updateTodo({ ...todo, completed: true }));
+    }
+  };
+
+  const clearCompletedTodos = async () => {
+    setLoading(true);
+    setTodos(currentTodos =>
+      currentTodos.map(todo =>
+        todo.completed ? { ...todo, isDeleting: true } : todo,
+      ),
+    );
+    const completedTodos = todos.filter(todo => todo.completed);
+
+    if (completedTodos.length === 0) {
+      return;
+    }
+
+    try {
+      const results = await Promise.allSettled(
+        completedTodos.map(todo => todoService.deleteTodo(todo.id)),
+      );
+
+      const successfullyDeletedIds = completedTodos
+        .map((todo, index) =>
+          results[index].status === 'fulfilled' ? todo.id : null,
+        )
+        .filter((id): id is number => id !== null);
+
+      setTodos(prevTodos =>
+        prevTodos.filter(todo => !successfullyDeletedIds.includes(todo.id)),
+      );
+      if (results.some(result => result.status === 'rejected')) {
+        setErrorMessage('Unable to delete a todo');
+        setTodos(currentTodos =>
+          currentTodos.map(todo =>
+            todo.completed ? { ...todo, isDeleting: false } : todo,
+          ),
+        );
+      } else {
+        setErrorMessage('');
+      }
+    } catch {
+      setErrorMessage('Unable to delete a todo');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const updateTodo = async (updatedTodo: Todo): Promise<boolean> => {
+    setTodos(currentTodos =>
+      currentTodos.map(todo =>
+        todo.id === updatedTodo.id ? { ...updatedTodo, isEditing: true } : todo,
+      ),
+    );
+    try {
+      const changedTodo = await todoService.updateTodo(updatedTodo);
+
+      setTodos(prevTodos =>
+        prevTodos.map(todo =>
+          todo.id === changedTodo.id ? changedTodo : todo,
+        ),
+      );
+
+      return true;
+    } catch (error) {
+      setTodos(todos);
+      setErrorMessage('Unable to update a todo');
+      setTodos(currentTodos =>
+        currentTodos.map(todo =>
+          todo.isEditing ? { ...todo, isEditing: false } : todo,
+        ),
+      );
+
+      return false;
+    } finally {
+      setTodos(currentTodos =>
+        currentTodos.map(todo =>
+          todo.isEditing ? { ...todo, isEditing: false } : todo,
+        ),
+      );
+    }
+  };
+
+  const filterTodos = (value: string) => {
+    switch (value) {
+      case 'active':
+        return [...todos].filter(todo => !todo.completed);
+      case 'completed':
+        return [...todos].filter(todo => todo.completed);
+    }
+
+    return todos;
+  };
+
+  if (!todoService.USER_ID) {
     return <UserWarning />;
   }
 
   return (
-    <section className="section container">
-      <p className="title is-4">
-        Copy all you need from the prev task:
-        <br />
-        <a href="https://github.com/mate-academy/react_todo-app-add-and-delete#react-todo-app-add-and-delete">
-          React Todo App - Add and Delete
-        </a>
-      </p>
+    <div className="todoapp">
+      <h1 className="todoapp__title">todos</h1>
 
-      <p className="subtitle">Styles are already copied</p>
-    </section>
+      <div className="todoapp__content">
+        <TodoHeader
+          areAllTodosCompleted={areAllTodosCompleted}
+          onSubmit={addTodo}
+          validation={setErrorMessage}
+          isLoading={loading}
+          toggleCompletedStatus={toggleCompletedStatus}
+          isTodosEmpty={todos.length === 0}
+        />
+
+        {todos.length > 0 && (
+          <TodoList
+            todos={filterTodos(filterField)}
+            onDelete={deleteTodo}
+            tempTodo={tempTodo}
+            isLoading={loading}
+            onUpdate={updateTodo}
+          />
+        )}
+
+        {/* Hide the footer if there are no todos */}
+
+        {todos.length > 0 && (
+          <TodoFooter
+            todos={todos}
+            filterField={filterField}
+            filterBy={setFilterField}
+            clearCompleted={clearCompletedTodos}
+          />
+        )}
+      </div>
+
+      <TodoNotification errorText={errorMessage} />
+
+      {/* {loading && <Loader />} */}
+    </div>
   );
 };
