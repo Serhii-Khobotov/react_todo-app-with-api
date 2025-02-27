@@ -47,7 +47,6 @@ export const TodoItem: React.FC<Props> = ({
 
     if (success) {
       setIsEditing(false);
-      todo.isEditing = false;
     } else {
       editTitleRef.current?.focus();
     }
@@ -69,8 +68,6 @@ export const TodoItem: React.FC<Props> = ({
       setIsEditing(false);
     }
   };
-
-  console.log(todo);
 
   return (
     <div

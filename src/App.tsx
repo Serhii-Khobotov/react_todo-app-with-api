@@ -75,6 +75,41 @@ export const App: React.FC = () => {
       });
   };
 
+  const updateTodo = async (updatedTodo: Todo): Promise<boolean> => {
+    setTodos(currentTodos =>
+      currentTodos.map(todo =>
+        todo.id === updatedTodo.id ? { ...updatedTodo, isEditing: true } : todo,
+      ),
+    );
+    try {
+      const changedTodo = await todoService.updateTodo(updatedTodo);
+
+      setTodos(prevTodos =>
+        prevTodos.map(todo =>
+          todo.id === changedTodo.id ? changedTodo : todo,
+        ),
+      );
+
+      return true;
+    } catch (error) {
+      setTodos(todos);
+      setErrorMessage('Unable to update a todo');
+      setTodos(currentTodos =>
+        currentTodos.map(todo =>
+          todo.isEditing ? { ...todo, isEditing: false } : todo,
+        ),
+      );
+
+      return false;
+    } finally {
+      setTodos(currentTodos =>
+        currentTodos.map(todo =>
+          todo.isEditing ? { ...todo, isEditing: false } : todo,
+        ),
+      );
+    }
+  };
+
   const deleteTodo = async (todoId: number) => {
     setErrorMessage('');
     setLoading(true);
@@ -153,41 +188,6 @@ export const App: React.FC = () => {
       setErrorMessage('Unable to delete a todo');
     } finally {
       setLoading(false);
-    }
-  };
-
-  const updateTodo = async (updatedTodo: Todo): Promise<boolean> => {
-    setTodos(currentTodos =>
-      currentTodos.map(todo =>
-        todo.id === updatedTodo.id ? { ...updatedTodo, isEditing: true } : todo,
-      ),
-    );
-    try {
-      const changedTodo = await todoService.updateTodo(updatedTodo);
-
-      setTodos(prevTodos =>
-        prevTodos.map(todo =>
-          todo.id === changedTodo.id ? changedTodo : todo,
-        ),
-      );
-
-      return true;
-    } catch (error) {
-      setTodos(todos);
-      setErrorMessage('Unable to update a todo');
-      setTodos(currentTodos =>
-        currentTodos.map(todo =>
-          todo.isEditing ? { ...todo, isEditing: false } : todo,
-        ),
-      );
-
-      return false;
-    } finally {
-      setTodos(currentTodos =>
-        currentTodos.map(todo =>
-          todo.isEditing ? { ...todo, isEditing: false } : todo,
-        ),
-      );
     }
   };
 
