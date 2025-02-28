@@ -1,6 +1,6 @@
 /* eslint-disable max-len */
 /* eslint-disable jsx-a11y/control-has-associated-label */
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 
 import * as todoService from './api/todos';
 import { UserWarning } from './components/UserWarning';
@@ -9,19 +9,28 @@ import { TodoList } from './components/TodoList';
 import { TodoFooter } from './components/TodoFooter';
 import { TodoNotification } from './components/TodoNotification';
 import { Todo } from './types/Todo';
+import { TodoFilter } from './types/TodoFilter';
 
 export const App: React.FC = () => {
   const [todos, setTodos] = useState<Todo[]>([]);
   const [loading, setLoading] = useState(false);
-  const [filterField, setFilterField] = useState('all');
+  const [filterField, setFilterField] = useState<TodoFilter>(TodoFilter.All);
   const [errorMessage, setErrorMessage] = useState('');
   const [tempTodo, setTempTodo] = useState<Todo | null>(null);
 
-  const areAllTodosCompleted = () => {
-    const completedTodos = [...todos].filter(todo => todo.completed);
+  const completedTodos = useMemo(
+    () => todos.filter(todo => todo.completed),
+    [todos],
+  );
 
+  const uncompletedTodos = useMemo(
+    () => todos.filter(todo => !todo.completed),
+    [todos],
+  );
+
+  const areAllTodosCompleted = useCallback(() => {
     return completedTodos.length === todos.length;
-  };
+  }, [completedTodos, todos]);
 
   useEffect(() => {
     if (errorMessage) {
@@ -31,7 +40,7 @@ export const App: React.FC = () => {
     }
   }, [errorMessage]);
 
-  function loadTodos() {
+  const loadTodos = () => {
     setErrorMessage('');
     setLoading(true);
 
@@ -40,7 +49,7 @@ export const App: React.FC = () => {
       .then(setTodos)
       .catch(() => setErrorMessage('Unable to load todos'))
       .finally(() => setLoading(false));
-  }
+  };
 
   useEffect(() => {
     loadTodos();
@@ -131,7 +140,9 @@ export const App: React.FC = () => {
           todo.id === todoId ? { ...todo, isDeleting: false } : todo,
         ),
       );
-      throw error;
+      // throw error;
+
+      return false;
     } finally {
       setLoading(false);
     }
@@ -141,9 +152,7 @@ export const App: React.FC = () => {
     if (areAllTodosCompleted()) {
       todos.map(todo => updateTodo({ ...todo, completed: false }));
     } else {
-      const unCompletedTodos = [...todos].filter(todo => !todo.completed);
-
-      unCompletedTodos.map(todo => updateTodo({ ...todo, completed: true }));
+      uncompletedTodos.map(todo => updateTodo({ ...todo, completed: true }));
     }
   };
 
@@ -154,7 +163,6 @@ export const App: React.FC = () => {
         todo.completed ? { ...todo, isDeleting: true } : todo,
       ),
     );
-    const completedTodos = todos.filter(todo => todo.completed);
 
     if (completedTodos.length === 0) {
       return;
@@ -191,16 +199,16 @@ export const App: React.FC = () => {
     }
   };
 
-  const filterTodos = (value: string) => {
-    switch (value) {
-      case 'active':
-        return [...todos].filter(todo => !todo.completed);
-      case 'completed':
-        return [...todos].filter(todo => todo.completed);
+  const filterTodos = useMemo(() => {
+    switch (filterField) {
+      case TodoFilter.Active:
+        return uncompletedTodos;
+      case TodoFilter.Completed:
+        return completedTodos;
+      default:
+        return todos;
     }
-
-    return todos;
-  };
+  }, [filterField, uncompletedTodos, completedTodos]);
 
   if (!todoService.USER_ID) {
     return <UserWarning />;
@@ -222,7 +230,7 @@ export const App: React.FC = () => {
 
         {todos.length > 0 && (
           <TodoList
-            todos={filterTodos(filterField)}
+            todos={filterTodos}
             onDelete={deleteTodo}
             tempTodo={tempTodo}
             isLoading={loading}
@@ -236,7 +244,7 @@ export const App: React.FC = () => {
           <TodoFooter
             todos={todos}
             filterField={filterField}
-            filterBy={setFilterField}
+            onChangeFilter={setFilterField}
             clearCompleted={clearCompletedTodos}
           />
         )}
