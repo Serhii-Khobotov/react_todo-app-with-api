@@ -35,7 +35,6 @@ export const TodoItem: React.FC<Props> = ({
 
       if (!tryDelete) {
         editTitleRef.current?.focus();
-        error('Unable to delete a todo');
       }
 
       return;
@@ -54,7 +53,10 @@ export const TodoItem: React.FC<Props> = ({
   };
 
   const handleToggleCompleted = () => {
-    const todoForUpdate = { ...todo, completed: !todo.completed };
+    const todoForUpdate = {
+      ...todo,
+      completed: !todo.completed,
+    };
 
     onUpdate(todoForUpdate);
   };

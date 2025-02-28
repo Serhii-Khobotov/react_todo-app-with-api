@@ -19,7 +19,7 @@ export const App: React.FC = () => {
   const [tempTodo, setTempTodo] = useState<Todo | null>(null);
 
   const completedTodos = useMemo(
-    () => todos.filter(todo => todo.completed),
+    () => [...todos].filter(todo => todo.completed),
     [todos],
   );
 
@@ -133,14 +133,13 @@ export const App: React.FC = () => {
       setTodos(currentTodos => currentTodos.filter(todo => todo.id !== todoId));
 
       return true;
-    } catch (error) {
+    } catch {
       setErrorMessage('Unable to delete a todo');
       setTodos(currentTodos =>
         currentTodos.map(todo =>
           todo.id === todoId ? { ...todo, isDeleting: false } : todo,
         ),
       );
-      // throw error;
 
       return false;
     } finally {
@@ -208,7 +207,7 @@ export const App: React.FC = () => {
       default:
         return todos;
     }
-  }, [filterField, uncompletedTodos, completedTodos]);
+  }, [filterField, uncompletedTodos, completedTodos, todos]);
 
   if (!todoService.USER_ID) {
     return <UserWarning />;
