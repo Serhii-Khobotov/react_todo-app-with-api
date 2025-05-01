@@ -24,13 +24,15 @@ export const TodoItem: React.FC<Props> = ({
   const handleEditTitle = async () => {
     setIsEditing(true);
 
-    if (title === editTitle.trim()) {
+    const trimmedTitle = editTitle.trim();
+
+    if (title === trimmedTitle) {
       setIsEditing(false);
 
       return;
     }
 
-    if (!editTitle.trim()) {
+    if (!trimmedTitle) {
       const tryDelete = await onDelete(id);
 
       if (!tryDelete) {
@@ -42,7 +44,7 @@ export const TodoItem: React.FC<Props> = ({
 
     const success = await onUpdate({
       ...todo,
-      title: editTitle.trim(),
+      title: trimmedTitle,
     });
 
     if (success) {

@@ -134,13 +134,12 @@ export const App: React.FC = () => {
 
       return true;
     } catch {
-      setErrorMessage('Unable to delete a todo');
       setTodos(currentTodos =>
         currentTodos.map(todo =>
           todo.id === todoId ? { ...todo, isDeleting: false } : todo,
         ),
       );
-
+      setErrorMessage('Unable to delete a todo');
       return false;
     } finally {
       setLoading(false);

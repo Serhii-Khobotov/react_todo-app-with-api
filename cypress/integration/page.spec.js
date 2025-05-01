@@ -1721,7 +1721,7 @@ describe('', () => {
           todos.assertTitle(0, 'CSS');
         });
 
-        it.skip('should show deleting error message on fail', () => {
+        it('should show deleting error message on fail', () => {
           // to prevent Cypress from failing the test on uncaught exception
           cy.once('uncaught:exception', () => false);
 

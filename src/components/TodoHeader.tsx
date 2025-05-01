@@ -44,7 +44,9 @@ export const TodoHeader: React.FC<Props> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!title.trim()) {
+    const trimmedTitle = title.trim();
+
+    if (!trimmedTitle) {
       validation('Title should not be empty');
 
       return;
@@ -55,7 +57,7 @@ export const TodoHeader: React.FC<Props> = ({
     onSubmit({
       id: 0,
       completed: false,
-      title: title.trim(),
+      title: trimmedTitle,
       userId: USER_ID,
     })
       .then(reset)
